@@ -172,7 +172,7 @@
     </a>
 
     <!-- ========================================== -->
-    <!-- SCRIPT FINAL: Mejora UX + Manejo Inteligente de Entornos -->
+    <!-- SCRIPT FINAL: Solo mejora visual de botones -->
     <!-- ========================================== -->
     <script>
       (function () {
@@ -184,7 +184,7 @@
 
           if (!playBtn || !stopBtn || !audio) return;
 
-          // 1. Lógica de botones (Puramente reactiva, no interfiere con radio.js)
+          // Lógica de botones (Puramente reactiva)
           function updateButtons() {
             const isPlaying = !audio.paused && audio.readyState >= 2;
             if (isPlaying) {
@@ -204,80 +204,31 @@
           audio.addEventListener("error", updateButtons);
           updateButtons();
 
-          // 2. Función auxiliar para sanitizar texto (seguridad contra XSS)
-          function escapeHtml(value) {
-            return String(value || "")
-              .replaceAll("&", "&amp;")
-              .replaceAll("<", "&lt;")
-              .replaceAll(">", "&gt;")
-              .replaceAll('"', "&quot;")
-              .replaceAll("'", "&#039;");
-          }
-
-          // 3. Función para actualizar la UI con datos (reales o demo)
-          function updateNowPlayingUI(data) {
-            const nowTrack = document.getElementById("now-track");
-            const historyList = document.getElementById("history-list");
-
-            if (nowTrack) {
-              nowTrack.textContent = data.current_track || "-";
-            }
-
-            if (historyList && Array.isArray(data.history)) {
-              const rows = data.history.slice(0, 5);
-              while (rows.length < 5) rows.push("-");
-              historyList.innerHTML = rows
-                .map((row) => `<div>${escapeHtml(row)}</div>`)
-                .join("");
-            }
-          }
-
-          // 4. Consulta a la API con Fallback elegante
-          async function checkNowPlayingAPI() {
+          // Solo monitoreo del API para el indicador de estado
+          async function checkAPIStatus() {
             try {
-              // RUTA RELATIVA: Funciona en cualquier dominio sin problemas de CORS
               const response = await fetch("/api/now-playing", {
                 cache: "no-store",
                 method: "GET",
               });
 
               if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              const data = await response.json();
+              await response.json(); // Solo verificamos que funcione
 
-              updateNowPlayingUI(data);
               if (debugStatus) {
                 debugStatus.textContent = "● en vivo";
-                debugStatus.style.color = "var(--ok, #1f7c34)"; // Verde
+                debugStatus.style.color = "var(--ok, #1f7c34)";
               }
             } catch (error) {
-              // Si falla (ej. en localhost por CORS), usa datos de demostración
-              console.warn(
-                "Entorno local detectado. Activando modo demostración.",
-                error,
-              );
-
-              const mockData = {
-                current_track: "RADIO HOMELESS - SEÑAL EN VIVO (MODO DEMO)",
-                history: [
-                  "Artista Experimental - Pista 01",
-                  "Colectivo Sonoro - Improvisación",
-                  "Fanzine Audio - Entrevista",
-                  "Ruido Blanco - Sesión en Vivo",
-                  "Archivo Sonoro - Grabación 1999",
-                ],
-              };
-
-              updateNowPlayingUI(mockData);
               if (debugStatus) {
                 debugStatus.textContent = "● modo demo (desarrollo local)";
-                debugStatus.style.color = "var(--accent, #d4433a)"; // Rojo
+                debugStatus.style.color = "var(--accent, #d4433a)";
               }
             }
           }
 
-          // Ejecutar al inicio y cada 10 segundos
-          checkNowPlayingAPI();
-          setInterval(checkNowPlayingAPI, 10000);
+          checkAPIStatus();
+          setInterval(checkAPIStatus, 10000);
         });
       })();
     </script>
