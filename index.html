@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <base href="https://radiohomeless.org/" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Radio Homeless</title>
+    <link rel="stylesheet" href="/static/radio.css?v=20260417-1" />
+
+    <!-- ========================================== -->
+    <!-- ADICIÓN: Estilos mínimos para estados de botones -->
+    <!-- ========================================== -->
+    <style>
+      .ascii-btn {
+        transition:
+          opacity 0.2s ease,
+          color 0.2s ease,
+          text-decoration 0.2s ease;
+      }
+
+      /* Cuando suena: PLAY se subraya y toma el color de acento del sitio */
+      .ascii-btn.is-active {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        color: var(--accent, #d4433a);
+        font-weight: 600;
+      }
+
+      /* Cuando está detenido: STOP se atenúa y no es clicable */
+      .ascii-btn.is-disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        text-decoration: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="left-head">
+          <video
+            class="header-anim"
+            autoplay
+            muted
+            loop
+            playsinline
+            aria-hidden="true"
+          >
+            <source src="/static/homeless_animacion_v2.mp4" type="video/mp4" />
+          </video>
+          <a href="/download" class="top-link" target="_blank" rel="noopener"
+            >[ BAJAR MUSICA ]</a
+          >
+          <a href="/zines" class="top-link" target="_blank" rel="noopener"
+            >[ VER FANZIN ]</a
+          >
+          <a
+            href="https://ricc.radiohomeless.org/"
+            class="top-link"
+            target="_blank"
+            rel="noopener"
+            >[ RICC ]</a
+          >
+        </div>
+        <div class="right-head">
+          <img
+            class="tipografia-logo"
+            src="/static/tipografia.jpeg"
+            alt="Radio Homeless tipografia"
+          />
+          <a
+            class="social-link social-email"
+            href="/cdn-cgi/l/email-protection#ed9f8c8984828582808881889e9e8e8283998c8e9982ad8a808c8481c38e8280"
+            aria-label="Email"
+          >
+            <span
+              class="__cf_email__"
+              data-cfemail="83f1e2e7eaecebeceee6efe6f0f0e0ecedf7e2e0f7ecc3e4eee2eaefade0ecee"
+              >[email&#160;protected]</span
+            >
+          </a>
+          <a
+            class="subibaja-link"
+            href="/subibaja"
+            target="_blank"
+            rel="noopener"
+            aria-label="Subibaja"
+          >
+            <img
+              class="subibaja-logo"
+              src="/static/subibaja-full.jpg?v=20260307-3"
+              alt="Subibaja logo"
+            />
+            <span>subibaja</span>
+          </a>
+          <a
+            class="tv-link"
+            href="https://hlftv.radiohomeless.org/"
+            aria-label="Ir a HLFTV"
+          >
+            <img
+              class="tv-link-logo"
+              src="/static/hlftv-logo.png?v=20260416-2"
+              alt="HLFTV"
+            />
+            <span class="tv-link-copy">ver tv</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="hero" aria-hidden="true">
+          <img
+            class="hero-logo"
+            src="/static/logo%20copy.png"
+            alt="Radio Homeless logo"
+          />
+        </section>
+
+        <section class="player" aria-label="Reproductor">
+          <!-- El medidor se deja intacto para que radio.js lo controle con Web Audio API -->
+          <div id="ascii-meter" class="ascii-meter" aria-live="off">
+            [........................]
+          </div>
+
+          <div class="ascii-controls">
+            <button id="play-btn" class="ascii-btn" type="button">
+              [ PLAY ]
+            </button>
+            <button id="stop-btn" class="ascii-btn" type="button">
+              [ STOP ]
+            </button>
+          </div>
+
+          <div class="now-playing-block">
+            <div class="now-title">SONANDO:</div>
+            <div id="now-track" class="now-track">-</div>
+          </div>
+
+          <div class="history-block">
+            <div id="history-status" class="history-status">cargando...</div>
+            <div id="history-list" class="history-list" aria-live="polite">
+              <div>-</div>
+              <div>-</div>
+              <div>-</div>
+              <div>-</div>
+              <div>-</div>
+            </div>
+          </div>
+        </section>
+
+        <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+      </main>
+    </div>
+
+    <a
+      class="architecture-link"
+      href="/static/arquitectura.html"
+      target="_blank"
+      rel="noopener"
+      aria-label="Ver arquitectura"
+    >
+      <span class="architecture-logo" aria-hidden="true">
+        <i class="arch-base"></i><i class="arch-body"></i
+        ><i class="arch-tower"></i><i class="arch-cube"></i>
+      </span>
+      <span class="architecture-link-copy">arquitectura</span>
+    </a>
+
+    <!-- ========================================== -->
+    <!-- ADICIÓN: Script de mejora UX (Puramente Reactivo) -->
+    <!-- ========================================== -->
+    <script>
+      (function () {
+        document.addEventListener("DOMContentLoaded", function () {
+          const playBtn = document.getElementById("play-btn");
+          const stopBtn = document.getElementById("stop-btn");
+          const audio = document.getElementById("audio");
+
+          if (!playBtn || !stopBtn || !audio) return;
+
+          // Función que solo actualiza las clases visuales de los botones
+          function updateButtons() {
+            // Verificamos si el audio está sonando y tiene datos cargados
+            const isPlaying = !audio.paused && audio.readyState >= 2;
+
+            if (isPlaying) {
+              playBtn.classList.add("is-active");
+              stopBtn.classList.remove("is-disabled");
+              stopBtn.disabled = false;
+            } else {
+              playBtn.classList.remove("is-active");
+              stopBtn.classList.add("is-disabled");
+              stopBtn.disabled = true;
+            }
+          }
+
+          // Nos suscribimos a los eventos que radio.js ya dispara.
+          // NO tocamos audio.play() ni audio.pause(), dejamos que radio.js mande.
+          audio.addEventListener("play", updateButtons);
+          audio.addEventListener("pause", updateButtons);
+          audio.addEventListener("waiting", updateButtons);
+          audio.addEventListener("error", updateButtons);
+
+          // Aplicamos el estado inicial al cargar la página
+          updateButtons();
+        });
+      })();
+    </script>
+
+    <!-- SCRIPTS ORIGINALES DEL SITIO (Intactos) -->
+    <script
+      data-cfasync="false"
+      src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"
+    ></script>
+    <script src="/static/radio.js?v=20260226-1"></script>
+    <script
+      type="module"
+      src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495"
+      integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg=="
+      data-cf-beacon='{"version":"2024.11.0","token":"0c958cdb1c0849e88921eda08f924172","r":1,"spa":2}'
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
